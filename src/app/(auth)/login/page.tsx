@@ -18,7 +18,6 @@ export default function LoginPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-          console.log('Session exists, redirecting to dashboard...')
           // เพิ่ม cookie
           document.cookie = `sb-auth-token=${session.access_token}; path=/; SameSite=Lax`
           router.replace('/dashboard')
@@ -36,22 +35,18 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log('Attempting login with:', { email })
       
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
       
-      console.log('Login response:', { data, error: signInError })
       
       if (signInError) {
         throw signInError
       }
       
       if (data?.user) {
-        console.log('Login successful, user:', data.user)
-        console.log('Session:', data.session)
         
         // เพิ่ม cookie
         if (data.session?.access_token) {
