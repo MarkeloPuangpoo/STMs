@@ -65,9 +65,10 @@ export default function LoginPage() {
       } else {
         throw new Error('No user data after login')
       }
-    } catch (error: any) {
-      console.error('Login error:', error)
-      setError(error.message || 'An error occurred during login')
+    } catch (error) {
+      const err = error as Error
+      console.error('Login error:', err)
+      setError(err.message || 'An error occurred during login')
     } finally {
       setLoading(false)
     }
@@ -137,11 +138,11 @@ export default function LoginPage() {
               href="/signup"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              Don't have an account? Sign up
+              Don&apos;t have an account? Sign up
             </Link>
           </div>
         </form>
       </div>
     </div>
   )
-} 
+}

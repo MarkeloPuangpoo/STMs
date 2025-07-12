@@ -12,10 +12,8 @@ import {
   RiSearchLine,
   RiEditLine,
   RiDeleteBinLine,
-  RiCloseLine,
   RiFilterLine,
-  RiDownloadLine,
-  RiUploadLine
+  RiDownloadLine
 } from 'react-icons/ri'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -62,7 +60,6 @@ const studentSchema = z.object({
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -81,30 +78,24 @@ export default function StudentsPage() {
   // โหลดข้อมูลนักเรียน
   const loadStudents = async () => {
     try {
-      setLoading(true)
       const data = await studentService.getAllStudents()
       setStudents(data)
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    } catch (err) {
+      setError((err as Error).message)
     }
   }
 
   // ค้นหานักเรียน
   const handleSearch = async (query: string) => {
     try {
-      setLoading(true)
       if (query.trim()) {
         const results = await studentService.searchStudents(query)
         setStudents(results)
       } else {
         await loadStudents()
       }
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    } catch (err) {
+      setError((err as Error).message)
     }
   }
 
@@ -115,8 +106,8 @@ export default function StudentsPage() {
       setIsModalOpen(false)
       reset()
       await loadStudents()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError((err as Error).message)
     }
   }
 
@@ -126,8 +117,8 @@ export default function StudentsPage() {
       try {
         await studentService.deleteStudent(id)
         await loadStudents()
-      } catch (err: any) {
-        setError(err.message)
+      } catch (err) {
+        setError((err as Error).message)
       }
     }
   }
@@ -145,23 +136,83 @@ export default function StudentsPage() {
   }, [])
 
   return (
-    <div className="space-y-6 p-4 lg:p-8">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">จัดการข้อมูลนักเรียน</h1>
-        <p className="text-muted-foreground text-sm lg:text-base">
-          เพิ่ม แก้ไข และลบข้อมูลนักเรียน
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0e7ef] dark:from-[#18181b] dark:to-[#23272f] p-0 sm:p-4 lg:p-8 flex flex-col">
+      {/* Hero Section */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/70 dark:bg-slate-900/70 rounded-2xl shadow-lg px-6 py-8 mb-8 border border-slate-100 dark:border-slate-800">
+        <div className="flex-1 text-center md:text-left">
+          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-blue-700 dark:text-blue-300 mb-2 drop-shadow-sm">
+            จัดการข้อมูลนักเรียน
+          </h1>
+          <p className="text-slate-700 dark:text-slate-300 text-base lg:text-lg mb-4">
+            เพิ่ม แก้ไข ค้นหา และจัดการข้อมูลนักเรียนได้อย่างง่ายดาย
+          </p>
+        </div>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow transition-colors">
+              <RiAddLine className="mr-2 h-5 w-5" /> เพิ่มนักเรียน
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>เพิ่มนักเรียนใหม่</DialogTitle>
+              <DialogDescription>กรอกข้อมูลนักเรียนให้ครบถ้วน</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="student_id">รหัสนักเรียน</Label>
+                  <Input id="student_id" {...register('student_id')} placeholder="รหัสนักเรียน" />
+                  {errors.student_id && <p className="text-red-500 text-xs mt-1">{errors.student_id.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="class">ชั้นเรียน</Label>
+                  <Input id="class" {...register('class')} placeholder="ชั้นเรียน" />
+                  {errors.class && <p className="text-red-500 text-xs mt-1">{errors.class.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="first_name">ชื่อ</Label>
+                  <Input id="first_name" {...register('first_name')} placeholder="ชื่อ" />
+                  {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="last_name">นามสกุล</Label>
+                  <Input id="last_name" {...register('last_name')} placeholder="นามสกุล" />
+                  {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
+                  <Input id="phone" {...register('phone')} placeholder="เบอร์โทรศัพท์" />
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="email">อีเมล</Label>
+                  <Input id="email" {...register('email')} placeholder="อีเมล" />
+                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" variant="default" disabled={isSubmitting}>
+                  {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="flex flex-col space-y-4">
+      <div className="flex flex-col gap-4">
         {error && (
-          <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
 
-        <div className="flex flex-col gap-4">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-2">
+          <div className="relative w-full sm:w-1/2">
             <RiSearchLine className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
@@ -174,8 +225,7 @@ export default function StudentsPage() {
               className="pl-10 w-full"
             />
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <RiFilterLine className="mr-2 h-4 w-4" />
@@ -190,7 +240,6 @@ export default function StudentsPage() {
                 ))}
               </SelectContent>
             </Select>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full sm:w-auto">
@@ -209,207 +258,54 @@ export default function StudentsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                  <RiAddLine className="mr-2 h-4 w-4" />
-                  เพิ่มนักเรียน
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>เพิ่มนักเรียนใหม่</DialogTitle>
-                  <DialogDescription>
-                    กรอกข้อมูลนักเรียนที่ต้องการเพิ่มในระบบ
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="student_id">รหัสนักเรียน</Label>
-                    <Input
-                      id="student_id"
-                      {...register('student_id')}
-                      className="w-full"
-                    />
-                    {errors.student_id && (
-                      <p className="text-sm text-destructive">{errors.student_id.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="first_name">ชื่อ</Label>
-                    <Input
-                      id="first_name"
-                      {...register('first_name')}
-                      className="w-full"
-                    />
-                    {errors.first_name && (
-                      <p className="text-sm text-destructive">{errors.first_name.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="last_name">นามสกุล</Label>
-                    <Input
-                      id="last_name"
-                      {...register('last_name')}
-                      className="w-full"
-                    />
-                    {errors.last_name && (
-                      <p className="text-sm text-destructive">{errors.last_name.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="class">ชั้นเรียน</Label>
-                    <Input
-                      id="class"
-                      {...register('class')}
-                      className="w-full"
-                    />
-                    {errors.class && (
-                      <p className="text-sm text-destructive">{errors.class.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      {...register('phone')}
-                      className="w-full"
-                    />
-                    {errors.phone && (
-                      <p className="text-sm text-destructive">{errors.phone.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">อีเมล</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...register('email')}
-                      className="w-full"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email.message}</p>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end gap-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsModalOpen(false)}
-                      disabled={isSubmitting}
-                    >
-                      ยกเลิก
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
-        {/* Mobile View */}
-        <div className="block lg:hidden space-y-4">
-          {filteredStudents.map((student) => (
-            <div key={student.id} className="bg-card rounded-lg border p-4 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-medium">{student.first_name} {student.last_name}</h3>
-                  <p className="text-sm text-muted-foreground">รหัส: {student.student_id}</p>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <RiEditLine className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => router.push(`/dashboard/students/${student.id}`)}>
-                      <RiEditLine className="mr-2 h-4 w-4" />
-                      แก้ไข
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelete(student.id)}>
-                      <RiDeleteBinLine className="mr-2 h-4 w-4" />
-                      ลบ
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">ชั้นเรียน</p>
-                  <p>{student.class}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">เบอร์โทรศัพท์</p>
-                  <p>{student.phone || '-'}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">อีเมล</p>
-                  <p>{student.email || '-'}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Desktop View */}
-        <div className="hidden lg:block">
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
+        {/* Table Section */}
+        <div className="overflow-x-auto rounded-xl shadow bg-white/80 dark:bg-slate-900/80 border border-slate-100 dark:border-slate-800">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-blue-50 dark:bg-slate-800">
+                <TableHead>รหัส</TableHead>
+                <TableHead>ชื่อ</TableHead>
+                <TableHead>นามสกุล</TableHead>
+                <TableHead>ชั้นเรียน</TableHead>
+                <TableHead>เบอร์โทร</TableHead>
+                <TableHead>อีเมล</TableHead>
+                <TableHead className="text-center">การจัดการ</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredStudents.length === 0 ? (
                 <TableRow>
-                  <TableHead>รหัสนักเรียน</TableHead>
-                  <TableHead>ชื่อ-นามสกุล</TableHead>
-                  <TableHead>ชั้นเรียน</TableHead>
-                  <TableHead>เบอร์โทรศัพท์</TableHead>
-                  <TableHead>อีเมล</TableHead>
-                  <TableHead className="w-[100px]">จัดการ</TableHead>
+                  <TableCell colSpan={7} className="text-center py-8 text-slate-400">
+                    ไม่พบนักเรียนในระบบ
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
+              ) : (
+                filteredStudents.map((student) => (
+                  <TableRow key={student.id} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition">
                     <TableCell>{student.student_id}</TableCell>
-                    <TableCell>{student.first_name} {student.last_name}</TableCell>
+                    <TableCell>{student.first_name}</TableCell>
+                    <TableCell>{student.last_name}</TableCell>
                     <TableCell>{student.class}</TableCell>
-                    <TableCell>{student.phone || '-'}</TableCell>
-                    <TableCell>{student.email || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => router.push(`/dashboard/students/${student.id}`)}
-                        >
-                          <RiEditLine className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(student.id)}
-                        >
-                          <RiDeleteBinLine className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <TableCell>{student.phone}</TableCell>
+                    <TableCell>{student.email}</TableCell>
+                    <TableCell className="flex gap-2 justify-center items-center">
+                      <Button size="icon" variant="outline" onClick={() => router.push(`/dashboard/students/${student.id}`)} title="แก้ไข">
+                        <RiEditLine className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="destructive" onClick={() => handleDelete(student.id)} title="ลบ">
+                        <RiDeleteBinLine className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>
   )
-} 
+}

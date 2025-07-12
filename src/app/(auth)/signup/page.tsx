@@ -20,8 +20,9 @@ export default function SignUpPage() {
       })
       if (error) throw error
       router.push('/login')
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error) {
+      const err = error as Error
+      setError(err.message)
     }
   }
 
@@ -93,4 +94,4 @@ export default function SignUpPage() {
       </div>
     </div>
   )
-} 
+}

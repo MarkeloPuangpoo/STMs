@@ -14,13 +14,13 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RiUserLine, RiMailLine, RiPhoneLine, RiBookOpenLine, RiNumbersLine } from 'react-icons/ri'
 
-// สร้าง schema สำหรับการ validate ข้อมูล
+// สร้าง schema แบบไม่ต้องระบุ generic
 const studentSchema = z.object({
   id: z.string(),
-  student_id: z.string().min(1, 'กรุณากรอกรหัสนักเรียน'),
-  first_name: z.string().min(1, 'กรุณากรอกชื่อ'),
-  last_name: z.string().min(1, 'กรุณากรอกนามสกุล'),
-  class: z.string().min(1, 'กรุณากรอกชั้นเรียน'),
+  student_id: z.string(),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  class: z.string(),
   phone: z.string().optional(),
   email: z.string().email('กรุณากรอกอีเมลให้ถูกต้อง').optional().or(z.literal('')),
 })
@@ -38,7 +38,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
     reset,
     formState: { errors },
   } = useForm<UpdateStudentInput>({
-    resolver: zodResolver(studentSchema) as any,
+    resolver: zodResolver(studentSchema),
   })
 
   // โหลดข้อมูลนักเรียน
@@ -49,8 +49,8 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
         const data = await studentService.getStudentById(id)
         setStudent(data)
         reset(data)
-      } catch (err: any) {
-        setError(err.message)
+      } catch (err) {
+        setError((err as Error).message)
       } finally {
         setLoading(false)
       }
@@ -64,25 +64,40 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
     try {
       await studentService.updateStudent(data)
       router.push('/dashboard/students')
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError((err as Error).message)
     }
   }
 
   if (loading) {
-    return <div className="text-center">กำลังโหลด...</div>
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-2">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-sm text-slate-600">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!student) {
-    return <div className="text-center">ไม่พบข้อมูลนักเรียน</div>
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+          ไม่พบข้อมูลนักเรียน
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex justify-center items-center min-h-[80vh] bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 py-8 px-2">
-      <Card className="w-full max-w-xl shadow-xl border-0">
+    <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0e7ef] dark:from-[#18181b] dark:to-[#23272f] flex items-center justify-center py-8 px-2">
+      <Card className="w-full max-w-xl shadow-xl border-0 bg-white/90 dark:bg-slate-900/90">
         <CardHeader className="flex flex-col items-center gap-2 pb-2">
           <div className="bg-blue-100 rounded-full p-3 mb-2"><RiUserLine className="h-7 w-7 text-blue-600" /></div>
-          <CardTitle className="text-2xl font-bold text-center">แก้ไขข้อมูลนักเรียน</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center text-blue-700 dark:text-blue-300">
+            แก้ไขข้อมูลนักเรียน
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {error && (
@@ -149,4 +164,4 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
       </Card>
     </div>
   )
-} 
+}

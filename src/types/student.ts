@@ -19,6 +19,12 @@ export interface CreateStudentInput {
   email?: string
 }
 
-export interface UpdateStudentInput extends Partial<CreateStudentInput> {
+export interface UpdateStudentInput {
   id: string
-} 
+  student_id: string
+  class: string
+  first_name?: string
+  last_name?: string
+  phone?: string
+  email?: string
+}
