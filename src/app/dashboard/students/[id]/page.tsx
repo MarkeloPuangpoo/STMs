@@ -1,167 +1,192 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { studentService } from '@/services/studentService'
-import { Student, UpdateStudentInput } from '@/types/student'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { use } from 'react'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { RiUserLine, RiMailLine, RiPhoneLine, RiBookOpenLine, RiNumbersLine } from 'react-icons/ri'
 
-// สร้าง schema แบบไม่ต้องระบุ generic
-const studentSchema = z.object({
+// Services and Types
+import { studentService } from '@/services/studentService'
+import { Student } from '@/types/student'
+
+// UI Components
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { Control } from 'react-hook-form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Skeleton } from "@/components/ui/skeleton" // Assuming you have a Skeleton component
+import { RiArrowLeftLine, RiUserLine, RiMailLine, RiPhoneLine, RiBookOpenLine, RiHashtag, RiAlertLine } from 'react-icons/ri'
+
+// Validation Schema
+const studentUpdateSchema = z.object({
   id: z.string(),
-  student_id: z.string(),
-  first_name: z.string().optional(),
-  last_name: z.string().optional(),
-  class: z.string(),
+  student_id: z.string().min(1, 'กรุณากรอกรหัสนักเรียน'),
+  first_name: z.string().min(1, 'กรุณากรอกชื่อจริง'),
+  last_name: z.string().min(1, 'กรุณากรอกนามสกุล'),
+  class: z.string().min(1, 'กรุณากรอกชั้นเรียน'),
   phone: z.string().optional(),
-  email: z.string().email('กรุณากรอกอีเมลให้ถูกต้อง').optional().or(z.literal('')),
+  email: z.string().email({ message: "รูปแบบอีเมลไม่ถูกต้อง" }).optional().or(z.literal('')),
 })
 
-export default function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const [student, setStudent] = useState<Student | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+// Reusable Form Field Component
+const FormInput = ({ name, label, control, icon, placeholder }: { name: keyof z.infer<typeof studentUpdateSchema>, label: string, control: Control<z.infer<typeof studentUpdateSchema>>, icon: React.ReactNode, placeholder?: string }) => (
+  <FormField
+    control={control}
+    name={name}
+    render={({ field }) => (
+      <FormItem>
+        <FormLabel className="flex items-center gap-2">
+            {icon} {label}
+        </FormLabel>
+        <FormControl>
+          <Input placeholder={placeholder || label} {...field} value={field.value || ''} />
+        </FormControl>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+)
+
+// Skeleton Loader Component
+const EditStudentSkeleton = () => (
+    <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+            <Skeleton className="h-8 w-1/2" />
+            <Skeleton className="h-4 w-3/4" />
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                <div className="md:col-span-2 space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+                <div className="md:col-span-2 space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
+            </div>
+        </CardContent>
+        <CardFooter className="justify-end gap-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+        </CardFooter>
+    </Card>
+)
+
+// Main Component
+export default function EditStudentPage() {
   const router = useRouter()
+  const params = useParams()
+  const id = params.id as string;
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<UpdateStudentInput>({
-    resolver: zodResolver(studentSchema),
+  const [student, setStudent] = useState<Student | null>(null)
+  const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading')
+  const [error, setError] = useState<string | null>(null)
+
+  const form = useForm<z.infer<typeof studentUpdateSchema>>({
+    resolver: zodResolver(studentUpdateSchema),
+    defaultValues: {
+        id: '',
+        student_id: '',
+        first_name: '',
+        last_name: '',
+        class: '',
+        phone: '',
+        email: '',
+    },
   })
+  
+  const { formState: { isSubmitting } } = form;
 
-  // โหลดข้อมูลนักเรียน
-  useEffect(() => {
-    const loadStudent = async () => {
-      try {
-        setLoading(true)
-        const data = await studentService.getStudentById(id)
-        setStudent(data)
-        reset(data)
-      } catch (err) {
-        setError((err as Error).message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadStudent()
-  }, [id, reset])
-
-  // อัพเดทข้อมูลนักเรียน
-  const onSubmit = async (data: UpdateStudentInput) => {
+  const loadStudent = useCallback(async () => {
+    if (!id) return;
+    setStatus('loading');
     try {
-      await studentService.updateStudent(data)
-      router.push('/dashboard/students')
+      const data = await studentService.getStudentById(id);
+      setStudent(data);
+      form.reset(data);
+      setStatus('success');
     } catch (err) {
-      setError((err as Error).message)
+      setError((err as Error).message);
+      setStatus('error');
+    }
+  }, [id, form]);
+
+  useEffect(() => {
+    loadStudent();
+  }, [loadStudent]);
+
+  const onSubmit = async (data: z.infer<typeof studentUpdateSchema>) => {
+    try {
+      await studentService.updateStudent(data);
+      router.push('/dashboard/students');
+      // Consider adding a success toast notification here
+    } catch (err) {
+      setError((err as Error).message);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-2">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="text-sm text-slate-600">กำลังโหลดข้อมูล...</p>
-        </div>
-      </div>
-    )
-  }
+  if (status === 'loading') return <EditStudentSkeleton />;
 
-  if (!student) {
+  if (status === 'error' || !student) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-          ไม่พบข้อมูลนักเรียน
-        </div>
+      <div className="flex flex-col items-center justify-center text-center gap-4 p-8 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500">
+        <RiAlertLine className="w-12 h-12 text-red-500" />
+        <h2 className="text-xl font-bold text-red-700 dark:text-red-300">เกิดข้อผิดพลาด</h2>
+        <p className="text-red-600 dark:text-red-400">{error || 'ไม่พบข้อมูลนักเรียน'}</p>
+        <Button variant="outline" onClick={() => router.back()}>
+          <RiArrowLeftLine className="mr-2" /> กลับไปหน้าก่อนหน้า
+        </Button>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] to-[#e0e7ef] dark:from-[#18181b] dark:to-[#23272f] flex items-center justify-center py-8 px-2">
-      <Card className="w-full max-w-xl shadow-xl border-0 bg-white/90 dark:bg-slate-900/90">
-        <CardHeader className="flex flex-col items-center gap-2 pb-2">
-          <div className="bg-blue-100 rounded-full p-3 mb-2"><RiUserLine className="h-7 w-7 text-blue-600" /></div>
-          <CardTitle className="text-2xl font-bold text-center text-blue-700 dark:text-blue-300">
-            แก้ไขข้อมูลนักเรียน
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
-              {error}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="flex items-center justify-between mb-6">
+            <div>
+                <h1 className="text-2xl font-bold">แก้ไขข้อมูลนักเรียน</h1>
+                <p className="text-muted-foreground">
+                    อัปเดตข้อมูลสำหรับ {student.first_name} {student.last_name}
+                </p>
             </div>
-          )}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <input type="hidden" {...register('id')} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="student_id"><RiNumbersLine className="inline mr-1 text-blue-400" />รหัสนักเรียน</Label>
-                <Input id="student_id" {...register('student_id')} placeholder="รหัสนักเรียน" />
-                {errors.student_id && (
-                  <p className="text-red-500 text-xs mt-1">{errors.student_id.message}</p>
-                )}
+            <Button type="button" variant="outline" onClick={() => router.push('/dashboard/students')}>
+                <RiArrowLeftLine className="mr-2 h-4 w-4" />
+                กลับ
+            </Button>
+        </div>
+
+        <Card className="w-full max-w-3xl mx-auto">
+          <CardContent className="pt-6">
+            {error && (
+              <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md text-center">
+                {error}
               </div>
-              <div>
-                <Label htmlFor="class"><RiBookOpenLine className="inline mr-1 text-blue-400" />ชั้นเรียน</Label>
-                <Input id="class" {...register('class')} placeholder="ชั้นเรียน" />
-                {errors.class && (
-                  <p className="text-red-500 text-xs mt-1">{errors.class.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="first_name"><RiUserLine className="inline mr-1 text-blue-400" />ชื่อ</Label>
-                <Input id="first_name" {...register('first_name')} placeholder="ชื่อ" />
-                {errors.first_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="last_name"><RiUserLine className="inline mr-1 text-blue-400" />นามสกุล</Label>
-                <Input id="last_name" {...register('last_name')} placeholder="นามสกุล" />
-                {errors.last_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="phone"><RiPhoneLine className="inline mr-1 text-blue-400" />เบอร์โทรศัพท์</Label>
-                <Input id="phone" {...register('phone')} placeholder="เบอร์โทรศัพท์" />
-                {errors.phone && (
-                  <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="email"><RiMailLine className="inline mr-1 text-blue-400" />อีเมล</Label>
-                <Input id="email" {...register('email')} placeholder="อีเมล" />
-                {errors.email && (
-                  <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
-                )}
-              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormInput name="student_id" label="รหัสนักเรียน" control={form.control} icon={<RiHashtag />} />
+                <FormInput name="class" label="ชั้นเรียน" control={form.control} icon={<RiBookOpenLine />} />
+                <FormInput name="first_name" label="ชื่อ" control={form.control} icon={<RiUserLine />} />
+                <FormInput name="last_name" label="นามสกุล" control={form.control} icon={<RiUserLine />} />
+                <div className="md:col-span-2">
+                    <FormInput name="phone" label="เบอร์โทรศัพท์ (ไม่บังคับ)" control={form.control} icon={<RiPhoneLine />} />
+                </div>
+                <div className="md:col-span-2">
+                    <FormInput name="email" label="อีเมล (ไม่บังคับ)" control={form.control} icon={<RiMailLine />} />
+                </div>
             </div>
-            <CardFooter className="flex justify-end gap-3 px-0 pt-6">
-              <Button type="button" variant="outline" onClick={() => router.push('/dashboard/students')}>
-                ยกเลิก
-              </Button>
-              <Button type="submit" variant="default">
-                บันทึก
-              </Button>
-            </CardFooter>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+          <CardFooter className="justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => router.push('/dashboard/students')}>
+              ยกเลิก
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
+    </Form>
   )
 }
